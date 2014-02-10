@@ -1,0 +1,9 @@
+<!-- <Script file="GeneLoot.lua"/>  -->
+<Frame name="GeneLoot"> 
+	<Scripts> 
+		<OnLoad> 
+			GeneLoot_OnLoad();
+		</OnLoad>
+	</Scripts>
+</Frame>
+

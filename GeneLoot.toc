@@ -1,0 +1,9 @@
+## Interface: 50400
+## Author: Aylje (Aylje of Silvermoon EU)
+## Title: GeneLoot
+## Notes: Genesis Master Looter Helper
+## SavedVariables:
+## OptionalDeps:
+## Dependencies:
+GeneLoot.xml
+GeneLoot.lua
