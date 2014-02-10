@@ -5,5 +5,4 @@
 ## SavedVariables:
 ## OptionalDeps:
 ## Dependencies:
-GeneLoot.xml
 GeneLoot.lua

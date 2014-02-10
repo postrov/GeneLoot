@@ -1,6 +1,13 @@
-function GeneLoot_OnLoad()
-        this:RegisterEvent("VARIABLES_LOADED")
+local frame = CreateFrame("Frame", "GeneLootFrame")
+frame:RegisterEvent("LOOT_OPENED")
+
+local function eventHandler(self, event, ...) 
+  if event == "LOOT_OPENED" then
+    -- print("Yay, looting!")
+  end
 end
+
+frame:SetScript("OnEvent", eventHandler)
 
 --- loot spec -> officer mapping
 local LOOT_OFFICERS = {
@@ -41,16 +48,16 @@ local function getLootOfficer(lootSpec)
 end
 
 --- gets item information for all loot items, assumes looting is in progress
-local function getLootItems()
+local function getLootItems(numLootItems)
   local items = {}
   for i = 1, numLootItems do
-    if GetLootSlotType(index) == LOOT_SLOT_ITEM then
+    if GetLootSlotType(i) == LOOT_SLOT_ITEM then
       local item = {}
       item.itemLink = GetLootSlotLink(i)
       item.itemName, item.itemLink, item.itemRarity, item.itemLevel, item.itemMinLevel,
             item.itemType, item.itemSubType, item.itemStackCount, item.itemEquipLoc,
-            item.itemTexture, item.itemSellPrice = GetItemInfo(itemLink)
-      item.itemStats = GetItemStats(itemLink)
+            item.itemTexture, item.itemSellPrice = GetItemInfo(item.itemLink)
+      item.itemStats = GetItemStats(item.itemLink)
       items[#items + 1] = item
     end
   end
@@ -59,13 +66,14 @@ end
 
 --- announce all loot and appropriate officers to whisper to
 local function announceLootItems(items)
+  local lootThreshold = GetLootThreshold()
   for i = 1, #items do 
-      local lootSpec = getLootSpec(itemLink, itemStats, itemType, itemSubType)
+      local item = items[i]
+      local lootSpec = getLootSpec(item.itemLink, item.itemStats, item.itemType, item.itemSubType)
       local lootOfficer = getLootOfficer(lootSpec) or "idk"
-
-      if itemRarity >= lootThreshold then
+      if item.itemRarity >= lootThreshold then
         -- todo: choose channel here, make sure to spam only in raids too
-        SendChatMessage(format("%d: %s -> %s", index, itemLink, lootOfficer), "RAID_WARNING")
+        SendChatMessage(format("%d: %s -> %s", i, item.itemLink, lootOfficer), "RAID_WARNING")
       end
   end
 end
@@ -73,23 +81,22 @@ end
 --- main function to be called when looting takes place
 local function processLoot()
   local numLootItems = GetNumLootItems()
-  local lootThreshold = GetLootThreshold()
   local lootmethod, masterlooterPartyID, masterlooterRaidID = GetLootMethod()
   -- todo: perhaps check if player is master looter
   if numLootItems == 0 then
     print("Not looting now")
   else
-    local items = getLootItems()
-    items.sort(items, function(a, b)
-      return (a.itemName < b.itemName)  or (a.itemLevel > b.itemLevel)
-    end)
+    local items = getLootItems(numLootItems)
+    -- fixme: this does not work for some reason, either b is nil or sorting function is reported as invalid
+    --table.sort(items, function(a, b)
+    --  return (a.itemName < b.itemName) or (a.itemLevel > b.itemLevel)
+    --end)
     announceLootItems(items)
   end
 end
 
 --- slash command function to run looting announcements
 local function geneLootSlash(msg, editbox)
-  print("GeneLoot slash")
   processLoot()
 end
 
