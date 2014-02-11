@@ -1,13 +1,39 @@
-local frame = CreateFrame("Frame", "GeneLootFrame")
-frame:RegisterEvent("LOOT_OPENED")
-
-local function eventHandler(self, event, ...) 
-  if event == "LOOT_OPENED" then
-    -- print("Yay, looting!")
-  end
+local function getLocation()
+  local zone, subZone = GetRealZoneText() or '', GetSubZoneText() or ''
+  return zone .. subZone
 end
 
-frame:SetScript("OnEvent", eventHandler)
+local LOOT_RESET_TIMER = 30
+local lastLootTime = 0
+local lastLootLocation = getLocation()
+local lastLootTargetGUID = nil
+
+--- assumes loot window is opened, returns GUID or nil
+local function getLootTargetGUID()
+  return UnitExists('target') and UnitIsEnemy('target', 'player') and UnitGUID('target') or nil
+end
+
+local function resetLastLootInfo()
+  lastLootTime = GetTime()
+  lastLootLocation = getLocation()
+  lastLootTargetGUID = getLootTargetGUID()
+end
+
+--- tries to tell if current looting is different than last looting
+local function shouldAutoProcessLoot()
+  -- todo: perhaps check if we're in raid and ML
+  local time = GetTime()
+  if time - lastLootTime > LOOT_RESET_TIMER then
+    return true
+  end
+
+  local lootTargetGUID = getLootTargetGUID()
+  if lootTarget then
+    return lootTargetGUID ~= lastLootTargetGUID
+  end
+ 
+  return getLocation() ~= lastLootLocation  
+end
 
 --- loot spec -> officer mapping
 local LOOT_OFFICERS = {
@@ -67,13 +93,15 @@ end
 --- announce all loot and appropriate officers to whisper to
 local function announceLootItems(items)
   local lootThreshold = GetLootThreshold()
+  local index = 1
   for i = 1, #items do 
       local item = items[i]
       local lootSpec = getLootSpec(item.itemLink, item.itemStats, item.itemType, item.itemSubType)
       local lootOfficer = getLootOfficer(lootSpec) or "idk"
       if item.itemRarity >= lootThreshold then
-        -- todo: choose channel here, make sure to spam only in raids too
-        SendChatMessage(format("%d: %s -> %s", i, item.itemLink, lootOfficer), "RAID_WARNING")
+        SendChatMessage(format("%d: %s -> %s", index, item.itemLink, lootOfficer), "RAID_WARNING")
+        -- print(format("%d: %s -> %s", index, item.itemLink, lootOfficer))
+        index = index + 1
       end
   end
 end
@@ -87,10 +115,11 @@ local function processLoot()
     print("Not looting now")
   else
     local items = getLootItems(numLootItems)
-    -- fixme: this does not work for some reason, either b is nil or sorting function is reported as invalid
-    --table.sort(items, function(a, b)
-    --  return (a.itemName < b.itemName) or (a.itemLevel > b.itemLevel)
-    --end)
+    table.sort(items, function(a, b)
+      local itemName1, itemName2 = a and a.itemName or '', b and b.itemName or ''
+      local ilvl1, ilvl2 = a and a.itemLevel or '', b and b.itemLevel or ''
+      return (itemName1 .. ilvl1) < (itemName2 .. ilvl2)
+    end)
     announceLootItems(items)
   end
 end
@@ -102,4 +131,19 @@ end
 
 SLASH_GENELOOT1 = "/geneloot"
 SlashCmdList.GENELOOT = geneLootSlash
+
+local frame = CreateFrame("Frame", "GeneLootFrame")
+frame:RegisterEvent("LOOT_OPENED")
+
+local function eventHandler(self, event, ...) 
+  if event == "LOOT_OPENED" then
+    print("yay!")
+    if shouldAutoProcessLoot() then
+      resetLastLootInfo()
+      processLoot()
+    end
+  end
+end
+
+frame:SetScript("OnEvent", eventHandler)
 
