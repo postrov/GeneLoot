@@ -1,8 +1,10 @@
+--- gets location used for deciding whether new looting is the same as previous looting
 local function getLocation()
   local zone, subZone = GetRealZoneText() or '', GetSubZoneText() or ''
   return zone .. subZone
 end
 
+--- looting info variables, describing last looting circumstances
 local LOOT_RESET_TIMER = 30
 local lastLootTime = 0
 local lastLootLocation = getLocation()
@@ -13,6 +15,7 @@ local function getLootTargetGUID()
   return UnitExists('target') and UnitIsEnemy('target', 'player') and UnitGUID('target') or nil
 end
 
+--- sets old looting info to current looting info
 local function resetLastLootInfo()
   lastLootTime = GetTime()
   lastLootLocation = getLocation()
@@ -37,8 +40,8 @@ end
 
 --- loot spec -> officer mapping
 local LOOT_OFFICERS = {
-  str_dps = "Aylje",
-  str_tank = "Aylje",
+  str_dps = "Berrí",
+  str_tank = "Berrí",
   agi_dps = "Aylje",
   -- agi_tank = "Aylje",
   int_dps = "Sorcelator",
@@ -48,7 +51,8 @@ local LOOT_OFFICERS = {
   prot_token = "Aylje"
 }
 
-local function getLootSpec(itemLink, stats, itemType, itemSubType)
+local function getLootSpec(item)
+  local stats = item.itemStats
   local str, agi, int, spi, dodge, parry
   str = stats["ITEM_MOD_STRENGTH_SHORT"] or 0
   agi = stats["ITEM_MOD_AGILITY_SHORT"] or 0
@@ -63,8 +67,15 @@ local function getLootSpec(itemLink, stats, itemType, itemSubType)
   elseif agi > 0 then
     return "agi_dps"
   else
+    local name = item.itemName
+    if string.match(name, " Vanquisher$") then
+      return "vanq_token"
+    elseif string.match(name, " Protector$") then
+      return "prot_token"
+    elseif string.match(name, " Conqueror$") then
+      return "conq_token"
+    end
     -- todo: perhaps determine troublesome items by id
-    -- todo: handle tier tokens properly
     return nil
   end
 end
@@ -96,7 +107,7 @@ local function announceLootItems(items)
   local index = 1
   for i = 1, #items do 
       local item = items[i]
-      local lootSpec = getLootSpec(item.itemLink, item.itemStats, item.itemType, item.itemSubType)
+      local lootSpec = getLootSpec(item)
       local lootOfficer = getLootOfficer(lootSpec) or "idk"
       if item.itemRarity >= lootThreshold then
         SendChatMessage(format("%d: %s -> %s", index, item.itemLink, lootOfficer), "RAID_WARNING")
