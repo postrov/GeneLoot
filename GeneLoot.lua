@@ -24,7 +24,6 @@ end
 
 --- tries to tell if current looting is different than last looting
 local function shouldAutoProcessLoot()
-  -- todo: perhaps check if we're in raid and ML
   local time = GetTime()
   if time - lastLootTime > LOOT_RESET_TIMER then
     return true
@@ -51,6 +50,7 @@ local LOOT_OFFICERS = {
   prot_token = 'Aylje'
 }
 
+--- tries to match an item to a loot spec ('agi_dps', 'str_tank') or tier token type
 local function getLootSpec(item)
   local stats = item.itemStats
   local str, agi, int, spi, dodge, parry
